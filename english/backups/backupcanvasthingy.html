@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Game</title>
+
+    <link rel="stylesheet" href="canvas.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="/ICON.ico" type="image/x-icon">
+    <script src="nav.js"></script>
+    <style>
+        img { width: 75%; margin-top: 10px; border-radius: 8px; }
+        .post { margin-bottom: 20px; }
+    </style>
+</head>
+<body>    
+    <div id="upload-button">
+        <input type="file" id="fileInput" />
+        <button onclick="uploadImage()">Upload</button>
+    </div>
+    <div id="feed"></div>
+    <div id="canvas"></div>
+    
+    <!-- IMPORTANT: use pinned version to avoid redeclare bugs -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+    const SUPABASE_URL = "https://uqcodazkoityuhhnbmum.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_WQwKJgTCh9fTaQV3dNWL-A_LrcipKPi";
+
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // -------------------------
+    // RENDER POSTS
+    // -------------------------
+    function addPost(post) {
+        const img = document.createElement("img");
+
+        img.src = post.image_url;
+
+        img.style.position = "absolute";
+        img.style.left = post.x + "px";
+        img.style.top = post.y + "px";
+        img.style.width = "150px";
+        img.style.cursor = "grab";
+        img.style.userSelect = "none";
+
+        enableDrag(img, post.id);
+
+        document.getElementById("canvas").appendChild(img);
+    }
+
+    async function loadPosts() {
+        const { data, error } = await client
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+        if (error) {
+        console.log(error);
+        return;
+        }
+
+        document.getElementById("canvas").innerHTML = "";
+        data.forEach(addPost);
+    }
+
+    // -------------------------
+    // UPLOAD CORE LOGIC
+    // -------------------------
+    async function handleUpload(file, x, y) {
+        const fileName = `${Date.now()}-${file.name}`;
+
+        const { error: uploadError } = await client.storage
+        .from("Images")
+        .upload(fileName, file);
+
+        if (uploadError) {
+        console.log(uploadError);
+        return alert("Upload failed");
+        }
+
+        const { data } = client.storage
+        .from("Images")
+        .getPublicUrl(fileName);
+
+        const { error: dbError } = await client
+        .from("posts")
+        .insert([
+            {
+            image_url: data.publicUrl,
+            x,
+            y
+            }
+        ]);
+
+        if (dbError) {
+        console.log(dbError);
+        return alert("DB insert failed");
+        }
+    }
+
+    // -------------------------
+    // BACKUP FILE INPUT UPLOAD
+    // -------------------------
+    window.uploadImage = async function () {
+        const file = document.getElementById("fileInput").files[0];
+        if (!file) return alert("No file selected");
+
+        await handleUpload(
+        file,
+        window.innerWidth / 2,
+        window.innerHeight / 2
+        );
+    };
+
+    // -------------------------
+    // FULL PAGE DRAG & DROP
+    // -------------------------
+    document.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+
+    document.addEventListener("drop", async (e) => {
+        e.preventDefault();
+
+        const file = e.dataTransfer.files?.[0];
+        if (!file) return;
+
+        const x = e.clientX;
+        const y = e.clientY;
+
+        await handleUpload(file, x, y);
+    });
+
+    // -------------------------
+    // DRAG MOVEMENT FOR IMAGES
+    // -------------------------
+    function enableDrag(el, id) {
+        let offsetX, offsetY, isDragging = false;
+
+        el.addEventListener("mousedown", (e) => {
+        isDragging = true;
+
+        offsetX = e.clientX - el.offsetLeft;
+        offsetY = e.clientY - el.offsetTop;
+
+        el.style.cursor = "grabbing";
+        });
+
+        document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+
+        el.style.left = (e.clientX - offsetX) + "px";
+        el.style.top = (e.clientY - offsetY) + "px";
+        });
+
+        document.addEventListener("mouseup", async () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        el.style.cursor = "grab";
+
+        await client
+            .from("posts")
+            .update({
+            x: el.offsetLeft,
+            y: el.offsetTop
+            })
+            .eq("id", id);
+        });
+    }
+
+    // -------------------------
+    // REALTIME UPDATES
+    // -------------------------
+    client
+        .channel("posts-channel")
+        .on(
+        "postgres_changes",
+        {
+            event: "INSERT",
+            schema: "public",
+            table: "posts"
+        },
+        (payload) => {
+            addPost(payload.new);
+        }
+        )
+        .subscribe();
+
+    // -------------------------
+    // INIT
+    // -------------------------
+    loadPosts();
+    </script>
+</body>
+</html>

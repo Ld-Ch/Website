@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Game</title>
+
+    <link rel="stylesheet" href="canvas.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="/ICON.ico" type="image/x-icon">
+    <script src="nav.js"></script>
+    <style>
+        img { width: 75%; margin-top: 10px; border-radius: 8px; }
+        .post { margin-bottom: 20px; }
+    </style>
+</head>
+<body>    
+    <div id="upload-button">
+        <input type="file" id="fileInput" />
+        <button onclick="uploadImage()">Upload</button>
+    </div>
+    <div id="feed"></div>
+    <div id="canvas"></div>
+    
+    <!-- IMPORTANT: use pinned version to avoid redeclare bugs -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <script>
+    const SUPABASE_URL = "https://uqcodazkoityuhhnbmum.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_WQwKJgTCh9fTaQV3dNWL-A_LrcipKPi";
+
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let posts = [];
+
+    // -------------------------
+    // RENDER SYSTEM
+    // -------------------------
+    function renderCanvas() {
+        const canvas = document.getElementById("canvas");
+        canvas.innerHTML = "";
+
+        posts.forEach((post) => {
+            const wrapper = document.createElement("div");
+            wrapper.style.position = "absolute";
+            wrapper.style.left = post.x + "px";
+            wrapper.style.top = post.y + "px";
+
+            // IMAGE
+            const img = document.createElement("img");
+            img.src = post.image_url;
+            img.style.width = "150px";
+            img.style.display = "block";
+            img.style.cursor = post.locked ? "default" : "grab";
+            img.style.userSelect = "none";
+
+            wrapper.appendChild(img);
+
+            // NOTE UI (only in edit mode)
+            if (!post.locked) {
+                const input = document.createElement("textarea");
+                input.value = post.note || "";
+                input.placeholder = "Add note...";
+                input.style.width = "150px";
+                input.style.display = "block";
+
+                input.addEventListener("input", async (e) => {
+                    await client
+                        .from("posts")
+                        .update({ note: e.target.value })
+                        .eq("id", post.id);
+                });
+
+                wrapper.appendChild(input);
+
+                enableDrag(wrapper, post.id);
+            }
+
+            // LOCKED NOTE DISPLAY
+            if (post.locked && post.note) {
+                const note = document.createElement("div");
+                note.innerText = post.note;
+                note.style.width = "150px";
+                note.style.fontSize = "12px";
+                note.style.opacity = "0.7";
+                wrapper.appendChild(note);
+            }
+
+            canvas.appendChild(wrapper);
+        });
+    }
+
+    // -------------------------
+    // LOAD POSTS
+    // -------------------------
+    async function loadPosts() {
+        const { data, error } = await client
+            .from("posts")
+            .select("*")
+            .order("created_at", { ascending: true });
+
+        if (error) {
+            console.log(error);
+            return;
+        }
+
+        posts = data || [];
+        renderCanvas();
+    }
+
+    // -------------------------
+    // UPLOAD CORE LOGIC
+    // -------------------------
+    async function handleUpload(file, x, y) {
+        const fileName = `${Date.now()}-${file.name}`;
+
+        await client.storage.from("Images").upload(fileName, file);
+
+        const { data } = client.storage
+            .from("Images")
+            .getPublicUrl(fileName);
+
+        await client.from("posts").insert([
+            {
+                image_url: data.publicUrl,
+                x,
+                y,
+                locked: false,
+                note: ""
+            }
+        ]);
+    }
+
+    // -------------------------
+    // BACKUP FILE INPUT UPLOAD
+    // -------------------------
+    window.uploadImage = async function () {
+        const file = document.getElementById("fileInput").files[0];
+        if (!file) return alert("No file selected");
+
+        await handleUpload(
+            file,
+            window.innerWidth / 2,
+            window.innerHeight / 2
+        );
+    };
+
+    // -------------------------
+    // FULL PAGE DRAG & DROP
+    // -------------------------
+    document.addEventListener("dragover", (e) => {
+        e.preventDefault();
+    });
+
+    document.addEventListener("drop", async (e) => {
+        e.preventDefault();
+
+        const file = e.dataTransfer.files?.[0];
+        if (!file) return;
+
+        const x = e.clientX;
+        const y = e.clientY;
+
+        await handleUpload(file, x, y);
+    });
+
+    // -------------------------
+    // DRAG MOVEMENT
+    // -------------------------
+    function enableDrag(el, id) {
+        let offsetX, offsetY, isDragging = false;
+
+        el.addEventListener("mousedown", (e) => {
+            isDragging = true;
+
+            offsetX = e.clientX - el.offsetLeft;
+            offsetY = e.clientY - el.offsetTop;
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+
+            el.style.left = (e.clientX - offsetX) + "px";
+            el.style.top = (e.clientY - offsetY) + "px";
+        });
+
+        document.addEventListener("mouseup", async () => {
+            if (!isDragging) return;
+            isDragging = false;
+
+            await client
+                .from("posts")
+                .update({
+                    x: el.offsetLeft,
+                    y: el.offsetTop
+                })
+                .eq("id", id);
+        });
+    }
+
+    async function lockPost(id) {
+        await client
+            .from("posts")
+            .update({ locked: true })
+            .eq("id", id);
+
+        const post = posts.find(p => p.id === id);
+        if (post) post.locked = true;
+
+        renderCanvas();
+    }
+
+    // -------------------------
+    // REALTIME SYNC
+    // -------------------------
+    client
+    .channel("posts-channel")
+    .on(
+        "postgres_changes",
+        {
+        event: "*",
+        schema: "public",
+        table: "posts"
+        },
+        (payload) => {
+        console.log("REALTIME EVENT:", payload);
+
+        const event = payload.eventType;
+        const row = payload.new;
+
+        if (event === "INSERT") {
+            posts.push(row);
+        }
+
+        if (event === "UPDATE") {
+            posts = posts.map(p =>
+            p.id === row.id ? row : p
+            );
+        }
+
+        if (event === "DELETE") {
+            posts = posts.filter(p => p.id !== payload.old.id);
+        }
+
+        renderCanvas();
+        }
+    )
+    .subscribe((status) => {
+        console.log("CHANNEL STATUS:", status);
+    });
+
+    // -------------------------
+    // INIT
+    // -------------------------
+    loadPosts();
+    </script>
+</body>
+</html>
