@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const styleHTML = 
         `<div>
             <link rel="stylesheet" href="style.css">
-            <link rel="icon" href="/ICON.ico" type="image/x-icon">
+            <link rel="icon" href="ICON.ico" type="image/x-icon">
         </div>`;
     const navbarHTML = `
     <header id="header">
