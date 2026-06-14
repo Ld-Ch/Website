@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖片亂放中心</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="canvas.css">
+    <link rel="icon" href="/ICON.ico" type="image/x-icon">
+    <script src="nav.js" defer></script>
+    <style>
+        img {border-radius: 8px; }
+    </style>
+</head>
+<body>    
+    <div id="upload-button">
+        <input type="file" id="fileInput" />
+        <button onclick="uploadImage()">上傳</button>
+    </div>
+    <div id="feed"></div>
+    <div id="canvas"></div>
+
+    <h4 class="tip">Tip: Shift + 🖱️滑鼠案件 來移動圖片</h4>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="canvas.js" defer></script>
+</body>
+</html>

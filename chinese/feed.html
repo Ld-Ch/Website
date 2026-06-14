@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="/ICON.ico" type="image/x-icon">
+    <script src="nav.js" defer></script>
+
+    <style>
+        body { text-align: center;}
+        img { width: 60%;}
+    </style>
+</head>
+<body>
+    <div style="margin-bottom: 120px;"></div>
+    <header class="title">
+            <h1>所有上傳記錄</h1>
+    </header>
+<!--
+    <input type="file" id="fileInput" />
+    <button onclick="uploadImage()">Upload</button>
+-->
+    <div id="feed"></div>
+
+    <!-- IMPORTANT: use pinned version to avoid redeclare bugs -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="feed-log.js" defer></script>
+</body>
+</html>

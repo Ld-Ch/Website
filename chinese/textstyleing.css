@@ -1,0 +1,49 @@
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0.8em 0 0.4em;
+    letter-spacing: -0.02em;
+}
+
+/* Soft pastel hierarchy */
+h1 { color: #374bff; font-size: 2.4rem; }
+h2 { color: #626262; font-size: 2rem; }
+h3 { color: #5ba42a; font-size: 1.6rem; }
+h4 { color: #824ff8; font-size: 1.25rem; }
+h5 { color: #99cc2a; font-size: 1.1rem; }
+h6 { color: #707bcc; font-size: 1rem; }
+
+/* Paragraphs */
+p {
+    margin: 0.6em 0;
+    font-size: 1rem;
+    color: #3a3a3a;
+}
+
+/* Links (if you have any) */
+a {
+    color: #5392f0;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #5b6cff;
+    border-bottom-color: rgba(91, 108, 255, 0.8);
+}
+
+/* Lists */
+ol, ul {
+    padding-left: 1.5rem;
+    color: #3a3a3a;
+}
+
+/* Blockquote styling */
+blockquote {
+    margin: 1em 0;
+    padding: 0.8em 1em;
+    border-left: 4px solid #7cc7b5;
+    background: rgba(124, 199, 181, 0.1);
+    color: #444;
+    font-style: italic;
+    border-radius: 6px;
+}
