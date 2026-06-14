@@ -8,10 +8,10 @@ document.addEventListener("DOMContentLoaded", function() {
     <header id="header">
         <div id="navbar">
             <div id="icon">
-                <a href="home.html"><img id="icon-ico" src="../ICON.ico" alt="deyi icon" style="width: 70px; margin: 3px"></a>
+                <a href="../index.html"><img id="icon-ico" src="../ICON.ico" alt="deyi icon" style="width: 70px; margin: 3px"></a>
             </div>
             <ul class="nav-list">
-                <li><a href="home.html">　 Homepage 　</a></li>
+                <li><a href="home.html">Homepage</a></li>
                 <li><a href="imageboard.html">Image Board</a></li>
                 <li><a href="feed.html">All Images</a></li>
                 <li><a href="others.html">Others</a></li>
